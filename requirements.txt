@@ -1,0 +1,8 @@
+# ==========================================
+# PhysiCards Dependencies
+# ==========================================
+# Web Framework & REST API
+Flask>=3.0.0
+
+# Native Desktop Window GUI (Optional - falls back to default browser if not installed)
+pywebview>=5.0.0

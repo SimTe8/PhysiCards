@@ -1,0 +1,58 @@
+# ==========================================
+# PhysiCards - Git Ignore Configuration
+# ==========================================
+
+# SQLite Database & User Learning Data (Private)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
+!data/.gitkeep
+
+# Environment & API Keys
+.env
+.env.*
+!.env.example
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+
+# Test & Coverage Artifacts
+test_*.db
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Build & Packaging
+build/
+dist/
+*.egg-info/
+*.spec

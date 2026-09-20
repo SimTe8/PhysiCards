@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhysiCards - Physik Karteikarten & Formeltrainer</title>
+    
+    <!-- Offline KaTeX -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script src="vendor/katex/katex.min.js"></script>
+    <script src="vendor/katex/auto-render.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- App Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon">⚛</div>
+                <div>
+                    <div class="brand-title">PhysiCards</div>
+                </div>
+                <span class="brand-tag">Physik & Formeln</span>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="app-nav">
+                <button class="nav-btn active" data-view="dashboard" onclick="app.switchView('dashboard')">
+                    <span>📊</span> Dashboard
+                </button>
+                <button class="nav-btn" data-view="study" onclick="app.switchView('study')">
+                    <span>🧠</span> Lernen
+                </button>
+                <button class="nav-btn" data-view="cards" onclick="app.switchView('cards')">
+                    <span>🗂️</span> Karten & Editor
+                </button>
+                <button class="nav-btn" data-view="stats" onclick="app.switchView('stats')">
+                    <span>📈</span> Statistik
+                </button>
+            </nav>
+
+            <!-- Header Controls -->
+            <div class="header-actions">
+                <button class="icon-btn" id="btnSoundToggle" onclick="app.toggleSound()" title="Audio-Feedback ein/aus">
+                    <span id="soundIcon">🔊</span>
+                </button>
+                <button class="icon-btn" id="btnThemeToggle" onclick="app.toggleTheme()" title="Design wechseln (Hell/Dunkel)">
+                    <span id="themeIcon">🌙</span>
+                </button>
+                <button class="btn-secondary" onclick="app.openAiSettingsModal()" style="padding: 7px 14px; font-size: 0.85rem;" title="Google AI Studio & Gemini Einstellungen">
+                    <span>⚙️</span> KI-Tutor
+                </button>
+                <button class="btn-secondary" onclick="app.openBackupModal()" style="padding: 7px 14px; font-size: 0.85rem;">
+                    <span>💾</span> Backup
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-content">
+            <!-- ==========================================
+                 VIEW 1: DASHBOARD
+                 ========================================== -->
+            <section id="view-dashboard" class="view-section active">
+                <!-- Summary Banner -->
+                <div class="stats-banner">
+                    <div class="stat-card">
+                        <div class="stat-icon due">⏰</div>
+                        <div class="stat-info">
+                            <div class="stat-val" id="dashDueCount">0</div>
+                            <div class="stat-lbl">Heute fällig</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon streak">🔥</div>
+                        <div class="stat-info">
+                            <div class="stat-val" id="dashStreak">0</div>
+                            <div class="stat-lbl">Tages-Streak</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon mastered">🏆</div>
+                        <div class="stat-info">
+                            <div class="stat-val" id="dashMasteredCount">0</div>
+                            <div class="stat-lbl">Gemeisterte Karten</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon reviews">✨</div>
+                        <div class="stat-info">
+                            <div class="stat-val" id="dashReviewsToday">0</div>
+                            <div class="stat-lbl">Heute gelernt</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Header & Quick Start -->
+                <div class="section-head">
+                    <div class="section-title">
+                        <span>📚</span> Themengebiete (Decks)
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="app.startStudySession(null, 'due')">
+                            <span>⚡</span> Alle fälligen Karten lernen
+                        </button>
+                        <button class="btn-secondary" onclick="app.openAiCardGenModal()" title="Neue Karteikarte per KI generieren">
+                            <span>🪄</span> KI-Karte generieren
+                        </button>
+                        <button class="btn-secondary" onclick="app.openNewDeckModal()">
+                            <span>➕</span> Neues Deck
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Decks Grid -->
+                <div id="deckGrid" class="deck-grid">
+                    <!-- Loaded dynamically via JS -->
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 VIEW 2: STUDY MODE
+                 ========================================== -->
+            <section id="view-study" class="view-section">
+                <div class="study-container">
+                    <!-- Study Topbar -->
+                    <div class="study-topbar">
+                        <div class="study-deck-badge" id="studyDeckTitle">
+                            <span id="studyDeckIcon">⚛</span>
+                            <span id="studyDeckName">Alle Decks</span>
+                        </div>
+                        <div class="study-progress-counter" id="studyCardCounter">
+                            Karte 0 von 0
+                        </div>
+                        <div class="study-toolbar-buttons">
+                            <select id="studyModeSelect" class="select-filter" style="padding: 5px 10px; font-size: 0.82rem;" onchange="app.changeStudyMode(this.value)">
+                                <option value="due">Fällige Karten</option>
+                                <option value="new">Neue Karten</option>
+                                <option value="difficult">Schwierige / Lücken</option>
+                                <option value="all">Alle Karten (Freies Üben)</option>
+                            </select>
+                            <button class="btn-tool" id="btnToggleAiTutor" onclick="app.toggleAiTutor()" title="KI-Physik-Tutor fragen (Taste T)">
+                                <span>💬</span> KI-Tutor [T]
+                            </button>
+                            <button class="btn-tool" id="btnToggleScratchpad" onclick="app.toggleScratchpad()" title="Kritzelblock für handschriftliche Formeln (Taste W)">
+                                <span>✏️</span> Kritzelblock [W]
+                            </button>
+                            <button class="btn-tool" onclick="app.editCurrentStudyCard()" title="Aktuelle Karte bearbeiten (Taste E)">
+                                <span>📝</span> Bearbeiten [E]
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3D Card Scene -->
+                    <div class="card-scene" id="cardScene">
+                        <div class="card-flipper" id="cardFlipper">
+                            <!-- FRONT OF CARD -->
+                            <div class="card-face card-front" id="cardFrontSide">
+                                <div>
+                                    <div class="card-header-info">
+                                        <span class="card-category-tag" id="frontCategoryTag">Elektrodynamik</span>
+                                        <div class="card-difficulty-indicator" id="frontDifficultyDots">
+                                            <span class="diff-dot active"></span>
+                                            <span class="diff-dot active"></span>
+                                            <span class="diff-dot"></span>
+                                        </div>
+                                    </div>
+                                    <div class="card-title-text" id="frontCardTitle">Fragetitel</div>
+                                    <div class="card-content-body" id="frontCardBody">
+                                        Formel-Frage wird geladen...
+                                    </div>
+                                    <div id="frontHintContainer" style="display: none;">
+                                        <details class="details-section">
+                                            <summary class="details-summary">💡 Hinweis anzeigen</summary>
+                                            <div class="details-content" id="frontHintText"></div>
+                                        </details>
+                                    </div>
+                                </div>
+
+                                <!-- Interactive Scratchpad (Whiteboard) Overlay -->
+                                <div class="scratchpad-container" id="scratchpadContainer">
+                                    <canvas id="scratchCanvas" class="scratchpad-canvas"></canvas>
+                                    <div class="scratchpad-controls">
+                                        <div class="scratchpad-tools">
+                                            <button class="btn-tool" onclick="app.scratchpad.setColor('#38bdf8')" title="Cyan">
+                                                <span class="color-dot active" style="background: #38bdf8;"></span>
+                                            </button>
+                                            <button class="btn-tool" onclick="app.scratchpad.setColor('#facc15')" title="Gelb">
+                                                <span class="color-dot" style="background: #facc15;"></span>
+                                            </button>
+                                            <button class="btn-tool" onclick="app.scratchpad.setColor('#ffffff')" title="Weiß">
+                                                <span class="color-dot" style="background: #ffffff;"></span>
+                                            </button>
+                                            <button class="btn-tool" onclick="app.scratchpad.setEraser(true)" title="Radierer">
+                                                <span>🧹</span>
+                                            </button>
+                                            <button class="btn-tool" onclick="app.scratchpad.undo()" title="Rückgängig">
+                                                <span>↩️</span>
+                                            </button>
+                                            <button class="btn-tool" onclick="app.scratchpad.clear()" title="Alles löschen">
+                                                <span>🗑️</span>
+                                            </button>
+                                        </div>
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">
+                                            Vor dem Umdrehen Formel vorkritzeln
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card-footer-controls">
+                                    <button class="btn-flip" id="btnFlipCard" onclick="app.flipCard()">
+                                        <span>👁️</span> Antwort aufdecken [Leertaste]
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- BACK OF CARD -->
+                            <div class="card-face card-back" id="cardBackSide">
+                                <div>
+                                    <div class="card-header-info">
+                                        <span class="card-category-tag" id="backCategoryTag" style="color: var(--accent-emerald);">Lösung & Formel</span>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="backRepInfo">Wdh: 0</span>
+                                    </div>
+                                    <div class="card-title-text" id="backCardTitle">Lösungstitel</div>
+                                    <div class="card-content-body" id="backCardBody">
+                                        Formel-Antwort wird geladen...
+                                    </div>
+
+                                    <!-- Collapsible Variable Breakdown & Units -->
+                                    <div id="backBreakdownContainer" class="details-section">
+                                        <details open>
+                                            <summary class="details-summary">📐 Variablen, Konstanten & SI-Einheiten</summary>
+                                            <div class="details-content" id="backBreakdownText"></div>
+                                        </details>
+                                    </div>
+
+                                    <!-- Collapsible Physical Meaning -->
+                                    <div id="backMeaningContainer" class="details-section" style="margin-top: 10px;">
+                                        <details open>
+                                            <summary class="details-summary">🔭 Physikalische Bedeutung & Intuition</summary>
+                                            <div class="details-content" id="backMeaningText"></div>
+                                        </details>
+                                    </div>
+
+                                    <!-- Collapsible Validity Domain -->
+                                    <div id="backValidityContainer" class="details-section" style="margin-top: 10px;">
+                                        <details>
+                                            <summary class="details-summary">⚠️ Gültigkeitsbereich & Grenzfälle</summary>
+                                            <div class="details-content" id="backValidityText"></div>
+                                        </details>
+                                    </div>
+                                </div>
+
+                                <!-- SM-2 Rating Buttons -->
+                                <div class="card-footer-controls" style="flex-direction: column; gap: 10px;">
+                                    <div class="rating-buttons-grid">
+                                        <button class="btn-rate again" onclick="app.submitReview(1)">
+                                            <span class="rate-num">[1]</span>
+                                            <span class="rate-label">Nochmal</span>
+                                            <span class="rate-interval" id="rateInterval1">&lt; 10m</span>
+                                        </button>
+                                        <button class="btn-rate hard" onclick="app.submitReview(2)">
+                                            <span class="rate-num">[2]</span>
+                                            <span class="rate-label">Schwer</span>
+                                            <span class="rate-interval" id="rateInterval2">1 Tag</span>
+                                        </button>
+                                        <button class="btn-rate good" onclick="app.submitReview(3)">
+                                            <span class="rate-num">[3]</span>
+                                            <span class="rate-label">Gut</span>
+                                            <span class="rate-interval" id="rateInterval3">4 Tage</span>
+                                        </button>
+                                        <button class="btn-rate easy" onclick="app.submitReview(4)">
+                                            <span class="rate-num">[4]</span>
+                                            <span class="rate-label">Einfach</span>
+                                            <span class="rate-interval" id="rateInterval4">9 Tage</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keyboard Shortcuts Legend -->
+                    <div class="shortcuts-legend">
+                        <span><span class="shortcut-key">Leertaste</span> Umdrehen</span>
+                        <span><span class="shortcut-key">1</span>-<span class="shortcut-key">4</span> Bewerten</span>
+                        <span><span class="shortcut-key">W</span> Kritzelblock</span>
+                        <span><span class="shortcut-key">E</span> Bearbeiten</span>
+                        <span><span class="shortcut-key">Esc</span> Dashboard</span>
+                    </div>
+
+                    <!-- Finished State (when queue empty) -->
+                    <div id="studyFinishedBox" class="study-finished-box" style="display: none;">
+                        <div class="finished-icon">🎉</div>
+                        <h2 style="font-size: 1.6rem; margin-bottom: 10px;">Hervorragend!</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                            Du hast alle anstehenden Karten dieser Lerneinheit erfolgreich wiederholt!
+                        </p>
+                        <div style="display: flex; justify-content: center; gap: 12px;">
+                            <button class="btn-primary" onclick="app.switchView('dashboard')">
+                                <span>📊</span> Zum Dashboard
+                            </button>
+                            <button class="btn-secondary" onclick="app.startStudySession(app.currentDeckId, 'all')">
+                                <span>🔄</span> Deck frei üben
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 VIEW 3: CARDS & LIVE SPLIT-SCREEN EDITOR
+                 ========================================== -->
+            <section id="view-cards" class="view-section">
+                <div class="card-manager-layout">
+                    <!-- Filter Toolbar -->
+                    <div class="filter-bar">
+                        <input type="text" id="cardSearchInput" class="search-input" placeholder="🔍 Suche in Fragen, Formeln, Erklärungen..." oninput="app.filterCards()">
+                        <select id="cardDeckFilter" class="select-filter" onchange="app.filterCards()">
+                            <option value="">Alle Decks</option>
+                        </select>
+                        <button class="btn-primary" onclick="app.openCardEditor()">
+                            <span>➕</span> Neue Karte erstellen
+                        </button>
+                    </div>
+
+                    <!-- Cards Table -->
+                    <div class="card-table-wrapper">
+                        <table class="card-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 32%;">Titel & Inhalt</th>
+                                    <th style="width: 20%;">Themengebiet</th>
+                                    <th style="width: 14%;">Schwierigkeit</th>
+                                    <th style="width: 16%;">SM-2 Fälligkeit</th>
+                                    <th style="width: 18%;">Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cardsTableBody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 VIEW 4: STATISTICS & ANALYTICS
+                 ========================================== -->
+            <section id="view-stats" class="view-section">
+                <div class="stats-layout">
+                    <!-- Overview Metrics -->
+                    <div class="stats-banner">
+                        <div class="stat-card">
+                            <div class="stat-icon reviews">📚</div>
+                            <div class="stat-info">
+                                <div class="stat-val" id="statsTotalCards">0</div>
+                                <div class="stat-lbl">Gesamtkarten</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon mastered">🎯</div>
+                            <div class="stat-info">
+                                <div class="stat-val" id="statsRetention">100%</div>
+                                <div class="stat-lbl">Behaltensrate (Retention)</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon streak">🔥</div>
+                            <div class="stat-info">
+                                <div class="stat-val" id="statsStreak">0 Tage</div>
+                                <div class="stat-lbl">Lern-Streak</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon due">⚡</div>
+                            <div class="stat-info">
+                                <div class="stat-val" id="statsTotalReviews">0</div>
+                                <div class="stat-lbl">Wiederholungen Gesamt</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 4px;">📅 Lernaktivität der letzten 14 Tage</h3>
+                            <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px;">Anzahl wiederholter Karteikarten pro Tag</p>
+                            <div id="activityChart" class="activity-chart-wrapper">
+                                <!-- Bars populated dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 14px;">📊 Karten-Status</h3>
+                            <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">
+                                <div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                        <span style="color: var(--accent-emerald);">🏆 Gemeistert (&ge; 3 Wiederholungen)</span>
+                                        <span id="statsMasteredCount" style="font-weight: 700;">0</span>
+                                    </div>
+                                    <div class="progress-bar-stack">
+                                        <div id="barMasteredProgress" class="bar-mastered" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                        <span style="color: var(--accent-blue);">📘 Im Lernprozess (1-2 Wiederholungen)</span>
+                                        <span id="statsLearningCount" style="font-weight: 700;">0</span>
+                                    </div>
+                                    <div class="progress-bar-stack">
+                                        <div id="barLearningProgress" class="bar-learning" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                        <span style="color: var(--text-secondary);">🌱 Neu (Noch unberührt)</span>
+                                        <span id="statsNewCount" style="font-weight: 700;">0</span>
+                                    </div>
+                                    <div class="progress-bar-stack">
+                                        <div id="barNewProgress" class="bar-new" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==========================================
+         MODAL 1: CARD EDITOR (LIVE SPLIT-SCREEN)
+         ========================================== -->
+    <div id="cardEditorModal" class="modal-overlay">
+        <div class="modal-window">
+            <div class="modal-header">
+                <div class="modal-title" id="editorModalTitle">Karte erstellen / bearbeiten</div>
+                <button class="icon-btn" onclick="app.closeCardEditor()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="editor-split-container">
+                    <!-- Left Pane: Inputs -->
+                    <div class="editor-input-pane">
+                        <div class="form-group" style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+                            <div>
+                                <label class="form-label">Themengebiet (Deck)</label>
+                                <select id="editCardDeck" class="form-control"></select>
+                            </div>
+                            <div>
+                                <label class="form-label">Schwierigkeit (1-5)</label>
+                                <select id="editCardDifficulty" class="form-control">
+                                    <option value="1">1 - Leicht / Grundwissen</option>
+                                    <option value="2">2 - Mittel</option>
+                                    <option value="3" selected>3 - Standard</option>
+                                    <option value="4">4 - Anspruchsvoll</option>
+                                    <option value="5">5 - Sehr vertieft</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Titel / Thema</label>
+                            <input type="text" id="editCardTitle" class="form-control" placeholder="z.B. 1. Maxwell-Gleichung (Gaußsches Gesetz)">
+                        </div>
+
+                        <!-- Physics Formula Quick Toolbar -->
+                        <div class="editor-pane-title">⚡ Physik-Formel-Schnellzugriff</div>
+                        <div class="formula-toolbar">
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\nabla')">&nabla;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\vec{E}')">&vec;E</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\vec{B}')">&vec;B</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\frac{\\partial}{\\partial t}')">&part;/&part;t</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\int_{-\\infty}^{+\\infty}')">&int;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\oiint')">&oiint;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\sum_{i=1}^n')">&sum;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\hbar')">&hbar;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\ket{\\psi}')">|&psi;&rang;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\bra{\\phi}')">&lang;&phi;|</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\sqrt{x}')">&radic;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\times')">&times;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\varepsilon_0')">&epsilon;<sub>0</sub></button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\mu_0')">&mu;<sub>0</sub></button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\omega')">&omega;</button>
+                            <button class="toolbar-sym-btn" onclick="app.insertSymbol('\\Delta x')">&Delta;x</button>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Vorderseite: Frage (Markdown & LaTeX)</label>
+                            <textarea id="editCardFront" class="form-control" style="min-height: 90px;" placeholder="Wie lautet die 1. Maxwell-Gleichung in differentieller Form?"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Rückseite: Formel & Antwort (Markdown & LaTeX)</label>
+                            <textarea id="editCardBack" class="form-control" style="min-height: 110px;" placeholder="$$\nabla \cdot \vec{E} = \frac{\rho}{\varepsilon_0}$$"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Variablen, Konstanten & SI-Einheiten (optional)</label>
+                            <textarea id="editCardBreakdown" class="form-control" style="min-height: 70px;" placeholder="- \vec{E}: Elektrisches Feld [V/m]&#10;- \rho: Raumladungsdichte [C/m³]"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Physikalische Bedeutung & Intuition (optional)</label>
+                            <textarea id="editCardMeaning" class="form-control" style="min-height: 60px;" placeholder="Elektrische Feldlinien entspringen auf positiven Ladungen..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Gültigkeitsbereich & Grenzfälle (optional)</label>
+                            <textarea id="editCardValidity" class="form-control" style="min-height: 50px;" placeholder="z.B. Nur für v << c, nicht-relativistisch, ideales Gas..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Hinweis (optional)</label>
+                            <input type="text" id="editCardHint" class="form-control" placeholder="Denk an Quellen und Senken...">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Tags (kommagetrennt)</label>
+                            <input type="text" id="editCardTags" class="form-control" placeholder="Elektrodynamik, Maxwell, Grundgleichung">
+                        </div>
+                    </div>
+
+                    <!-- Right Pane: Live Rendered Preview -->
+                    <div class="editor-preview-pane">
+                        <div class="editor-pane-title">👁️ Live-KaTeX-Vorschau</div>
+                        <div class="preview-pane-box">
+                            <div style="font-size: 0.82rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">VORDERSEITE:</div>
+                            <div id="previewFront" style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color);">
+                                (Vorschau der Frage)
+                            </div>
+
+                            <div style="font-size: 0.82rem; font-weight: 700; color: var(--accent-emerald); margin-bottom: 8px;">RÜCKSEITE:</div>
+                            <div id="previewBack" style="margin-bottom: 16px;">
+                                (Vorschau der Lösung & Formel)
+                            </div>
+
+                            <div id="previewBreakdown" style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 12px;"></div>
+                            <div id="previewMeaning" style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 12px;"></div>
+                            <div id="previewValidity" style="font-size: 0.88rem; color: var(--text-secondary);"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="app.closeCardEditor()">Abbrechen</button>
+                <button class="btn-primary" onclick="app.saveCardFromEditor()">
+                    <span>💾</span> Karte speichern
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 2: DECK MODAL (CREATE & EDIT)
+         ========================================== -->
+    <div id="deckModal" class="modal-overlay">
+        <div class="modal-window" style="max-width: 500px;">
+            <div class="modal-header">
+                <div class="modal-title" id="deckModalTitle">Themengebiet bearbeiten</div>
+                <button class="icon-btn" onclick="app.closeDeckModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="deckModalId" value="">
+                <div class="form-group">
+                    <label class="form-label">Name des Decks</label>
+                    <input type="text" id="deckModalName" class="form-control" placeholder="z.B. Festkörperphysik & Halbleiter">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Beschreibung</label>
+                    <textarea id="deckModalDesc" class="form-control" placeholder="Themen, Formeln, Konzepte..."></textarea>
+                </div>
+                <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label class="form-label">Symbol</label>
+                        <select id="deckModalIcon" class="form-control">
+                            <option value="atom">⚛ Atom / QM</option>
+                            <option value="zap">⚡ Blitz / E-Dynamik</option>
+                            <option value="flame">🔥 Flamme / Thermodynamik</option>
+                            <option value="orbit">🪐 Orbit / Relativität</option>
+                            <option value="compass">🧭 Kompass / Mechanik</option>
+                            <option value="calculator">📐 Rechner / Physik-Methoden</option>
+                            <option value="sigma">∑ Summen & Reihen</option>
+                            <option value="function">ƒ(x) Analysis & Räume</option>
+                            <option value="infinity">♾️ Unendlichkeit</option>
+                            <option value="microscope">🔬 Mikroskop / Festkörper</option>
+                            <option value="book">📖 Allgemein / Formelsammlung</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Akzentfarbe</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="color" id="deckModalColor" class="form-control" value="#06b6d4" style="height: 42px; width: 48px; padding: 2px; cursor: pointer; flex-shrink: 0;">
+                            <div class="deck-color-presets" style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                <button type="button" class="color-preset-btn" style="background:#3b82f6;" onclick="document.getElementById('deckModalColor').value='#3b82f6'" title="Blau"></button>
+                                <button type="button" class="color-preset-btn" style="background:#06b6d4;" onclick="document.getElementById('deckModalColor').value='#06b6d4'" title="Cyan"></button>
+                                <button type="button" class="color-preset-btn" style="background:#10b981;" onclick="document.getElementById('deckModalColor').value='#10b981'" title="Grün"></button>
+                                <button type="button" class="color-preset-btn" style="background:#f59e0b;" onclick="document.getElementById('deckModalColor').value='#f59e0b'" title="Amber"></button>
+                                <button type="button" class="color-preset-btn" style="background:#8b5cf6;" onclick="document.getElementById('deckModalColor').value='#8b5cf6'" title="Violett"></button>
+                                <button type="button" class="color-preset-btn" style="background:#6366f1;" onclick="document.getElementById('deckModalColor').value='#6366f1'" title="Indigo"></button>
+                                <button type="button" class="color-preset-btn" style="background:#f43f5e;" onclick="document.getElementById('deckModalColor').value='#f43f5e'" title="Rose"></button>
+                                <button type="button" class="color-preset-btn" style="background:#ec4899;" onclick="document.getElementById('deckModalColor').value='#ec4899'" title="Pink"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between;">
+                <div>
+                    <button type="button" class="btn-secondary" id="btnDeleteDeck" onclick="app.deleteCurrentDeck()" style="color: var(--accent-rose); border-color: rgba(244,63,94,0.3); display: none;">
+                        <span>🗑️</span> Deck löschen
+                    </button>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-secondary" onclick="app.closeDeckModal()">Abbrechen</button>
+                    <button class="btn-primary" id="btnSaveDeck" onclick="app.saveDeck()">
+                        <span id="deckModalSaveIcon">💾</span> <span id="deckModalSaveText">Speichern</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 3: BACKUP & ANKI EXPORT
+         ========================================== -->
+    <div id="backupModal" class="modal-overlay">
+        <div class="modal-window" style="max-width: 600px;">
+            <div class="modal-header">
+                <div class="modal-title">Datensicherung & Export</div>
+                <button class="icon-btn" onclick="app.closeBackupModal()">✕</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px;">
+                <div style="background: rgba(255, 255, 255, 0.02); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <h4 style="margin-bottom: 6px;">📦 Vollständiges JSON-Backup</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+                        Sichert alle Karten, Decks und den gesamten SM-2 Lernfortschritt in einer Datei.
+                    </p>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="/api/export" class="btn-primary" style="text-decoration: none;" download>
+                            <span>⬇️</span> Backup herunterladen
+                        </a>
+                        <label class="btn-secondary" style="cursor: pointer;">
+                            <span>⬆️</span> Wiederherstellen
+                            <input type="file" id="importJsonInput" accept=".json" style="display: none;" onchange="app.importJsonFile(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255, 255, 255, 0.02); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <h4 style="margin-bottom: 6px;">⭐ Anki-Export (TSV)</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+                        Exportiere Karten für den Import in die Anki Desktop App.
+                    </p>
+                    <a href="/api/export/anki" class="btn-secondary" style="text-decoration: none;" download>
+                        <span>⬇️</span> Anki-Datei herunterladen
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="app.closeBackupModal()">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         AI TUTOR DRAWER (SLIDE-IN PANEL)
+         ========================================== -->
+    <div id="aiTutorDrawer" class="ai-drawer">
+        <!-- Drag-to-resize handle on left edge -->
+        <div class="ai-drawer-resizer" id="aiDrawerResizer" title="Klicken und nach links ziehen, um den Chat zu vergrößern"></div>
+
+        <div class="ai-drawer-header">
+            <div class="ai-drawer-title">
+                <span>💬</span>
+                <span>Physik-Tutor</span>
+                <span class="badge-ai-model" id="drawerModelBadge">gemini-3.6-flash</span>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button class="icon-btn" id="btnToggleDrawerWidth" onclick="app.toggleAiDrawerWidth()" title="Breite umschalten (Normal / Breit)" style="font-size: 0.9rem;">↔️</button>
+                <button class="icon-btn" onclick="app.clearAiChat()" title="Chat leeren" style="font-size: 0.9rem;">🗑️</button>
+                <button class="icon-btn" onclick="app.toggleAiTutor()" title="Schließen (Taste T oder Esc)">✕</button>
+            </div>
+        </div>
+
+        <!-- Quick Prompt Chips -->
+        <div class="ai-quick-chips">
+            <button class="chip-btn" onclick="app.sendQuickPrompt('analogy')">💡 Alltags-Analogie</button>
+            <button class="chip-btn" onclick="app.sendQuickPrompt('socratic')">❓ Verständnisfrage</button>
+            <button class="chip-btn" onclick="app.sendQuickPrompt('derivation')">📐 Herleitung</button>
+            <button class="chip-btn" onclick="app.sendQuickPrompt('traps')">⚠️ Denkfallen</button>
+            <button class="chip-btn" onclick="app.sendQuickPrompt('generate_card')" style="border-color: var(--accent-emerald); color: var(--accent-emerald);">➕ Als Karte speichern</button>
+        </div>
+
+        <!-- Chat Message History -->
+        <div class="ai-chat-messages" id="aiChatMessages">
+            <!-- Messages populated by JS -->
+        </div>
+
+        <!-- Chat Input Area -->
+        <div class="ai-chat-input-box">
+            <textarea id="aiChatInput" class="ai-chat-textarea" placeholder="Frage zu dieser Karte stellen... (Enter zum Senden)" rows="1" onkeydown="app.handleAiInputKeydown(event)"></textarea>
+            <button id="btnSendAiChat" class="btn-primary ai-send-btn" onclick="app.sendAiMessage()" title="Senden">
+                <span>➤</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 4: GOOGLE AI STUDIO / GEMINI SETTINGS
+         ========================================== -->
+    <div id="aiSettingsModal" class="modal-overlay">
+        <div class="modal-window" style="max-width: 550px;">
+            <div class="modal-header">
+                <div class="modal-title"><span>⚙️</span> Google AI Studio & KI-Tutor</div>
+                <button class="icon-btn" onclick="app.closeAiSettingsModal()">✕</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); padding: 12px 14px; border-radius: var(--radius-md); font-size: 0.84rem; line-height: 1.45;">
+                    Verbinde deinen kostenlosen <b>Google AI Studio API-Key</b>, um den interaktiven Physik-Tutor und automatische Kartenerstellung freizuschalten.
+                    <br><a href="https://aistudio.google.com" target="_blank" style="color: var(--accent-cyan); font-weight: 600; text-decoration: underline;">Kostenlosen API-Key bei Google AI Studio holen ↗</a>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="display: flex; justify-content: space-between;">
+                        <span>API-Key (AIza...)</span>
+                        <span id="aiKeyStatusBadge" style="font-size: 0.75rem; color: var(--text-muted);">Status prüfen...</span>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="password" id="aiApiKeyInput" class="form-control" placeholder="AIzaSy..." style="font-family: var(--font-mono); font-size: 0.85rem;">
+                        <button class="btn-secondary" type="button" onclick="app.toggleAiKeyVisibility()" style="padding: 0 12px;" title="Key anzeigen/verbergen">
+                            <span id="aiKeyEyeIcon">👁️</span>
+                        </button>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                        Wird rein lokal in deiner SQLite-Datenbank (<code style="color: var(--accent-cyan);">cards.db</code>) gespeichert und verlässt niemals deinen Rechner zu Dritten.
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px;">
+                    <div>
+                        <label class="form-label">Modell</label>
+                        <select id="aiModelSelect" class="form-control" onchange="app.onAiModelChange()">
+                            <option value="gemini-3.6-flash">⚡ Gemini 3.6 Flash (Standard & Schnell)</option>
+                            <option value="gemini-3.1-pro-preview">🧠 Gemini 3.1 Pro Preview (Google AI Pro)</option>
+                            <option value="gemini-3.8-flash">🚀 Gemini 3.8 Flash (Neueste Gen)</option>
+                            <option value="gemini-3.7-flash">✨ Gemini 3.7 Flash</option>
+                            <option value="custom">✏️ Anderes Modell eingeben...</option>
+                        </select>
+                        <input type="text" id="aiCustomModelInput" class="form-control" placeholder="Modellcode, z.B. gemini-3.1-pro-preview" style="display: none; margin-top: 6px; font-family: var(--font-mono); font-size: 0.82rem;">
+                    </div>
+                    <div>
+                        <label class="form-label">Didaktischer Stil</label>
+                        <select id="aiStyleSelect" class="form-control">
+                            <option value="socratic">Sokratisch (Fragen stellen)</option>
+                            <option value="intuitive">Alltags-Analogien & Intuition</option>
+                            <option value="rigorous">Mathematisch & formal exakt</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); padding: 9px 12px; border-radius: var(--radius-md); font-size: 0.8rem; line-height: 1.4; color: var(--text-secondary);">
+                    💎 <b>Google AI Pro:</b> Wähle oben <b>Gemini 3.1 Pro Preview</b> für höchste Problemlösungskompetenz bei tiefen theoretischen Herleitungen, Symmetrien und Quantenmechanik!
+                </div>
+
+                <!-- Connection Test Button & Feedback -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 6px;">
+                    <button type="button" class="btn-secondary" id="btnTestAiConn" onclick="app.testAiConnection()">
+                        <span>🔍</span> Verbindung testen
+                    </button>
+                    <div id="aiTestResult" style="font-size: 0.82rem; font-weight: 500;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="app.closeAiSettingsModal()">Abbrechen</button>
+                <button class="btn-primary" onclick="app.saveAiSettings()">
+                    <span>💾</span> Einstellungen speichern
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 5: AI CARD GENERATOR MODAL
+         ========================================== -->
+    <div id="aiCardGenModal" class="modal-overlay">
+        <div class="modal-window" style="max-width: 550px;">
+            <div class="modal-header">
+                <div class="modal-title"><span>🪄</span> Physik-Karteikarte mit KI generieren</div>
+                <button class="icon-btn" onclick="app.closeAiCardGenModal()">✕</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Gib einen physikalischen Begriff oder ein Phänomen ein. Gemini generiert automatisch eine didaktisch aufgeschlüsselte Karte mit Formel, Variablen, Intuition und Gültigkeitsbereich.
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Thema / Begriff / Phänomen</label>
+                    <input type="text" id="aiCardGenTopic" class="form-control" placeholder="z.B. Compton-Effekt, Hall-Spannung, Zeeman-Effekt, Carnot-Kreisprozess...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Ziel-Themengebiet (Deck)</label>
+                    <select id="aiCardGenDeckSelect" class="form-control">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <div id="aiCardGenStatus" style="display: none; padding: 12px; border-radius: var(--radius-md); font-size: 0.85rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="app.closeAiCardGenModal()">Abbrechen</button>
+                <button class="btn-primary" id="btnRunCardGen" onclick="app.runAiCardGeneration()">
+                    <span>🪄</span> Karte jetzt generieren
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/scratchpad.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
