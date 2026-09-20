@@ -12,6 +12,10 @@ Ein spezialisiertes Lernsystem für Physik, höhere Mathematik und Naturwissensc
 
 ---
 
+![alt text](title_image.png)
+
+
+
 ## Motivation & Methodik
 
 Das Erlernen physikalischer und mathematischer Gesetzmäßigkeiten erfordert mehr als passive Memorisierung. PhysiCards unterstützt ein vertieftes Verständnis durch:
