@@ -12,7 +12,7 @@ Ein spezialisiertes Lernsystem für Physik, höhere Mathematik und Naturwissensc
 
 ---
 
-![alt text](title_image.png)
+![alt text](title_   image.png)
 
 
 
