@@ -61,7 +61,7 @@ Standardisierte Gliederung jeder Karte:
 
 ### 7. Live Split-Screen Editor & Deck-Verwaltung
 - Zwei-Spalten-Editor mit synchronisierter KaTeX-Vorschau in Echtzeit.
-- Formel-Werkzeugleiste für mathematische Symbole ($\nabla, \vec{E}, \int, \oiint, \sum, \hbar, \ket{\psi}, \dots$).
+- Formel-Werkzeugleiste für mathematische Symbole.
 - Umfassende Deck-Verwaltung: Erstellen, Bearbeiten, Löschen, Festlegen von Akzentfarben und Symbolen.
 
 ### 8. Datensicherung & Export
